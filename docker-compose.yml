@@ -3,14 +3,16 @@ services:
     build: backend
     environment:
       DATABASE_URL: postgres://local-dev:local@db/api?sslmode=disable
-      API_SERVER_ADD: ":8000"
+      API_SERVER_ADD: ":80"
       REDIS_HOST: cache
       REDIS_PORT: 6379
     depends_on:
       - db
       - cache
     ports:
-      - 8000:8000
+      - 8000
+    deploy:
+      replicas: 3
 
   cache:
     image: redis:7.4.1-alpine
@@ -30,6 +32,16 @@ services:
       POSTGRES_PASSWORD: local
     volumes:
       - db-data:/var/lib/postgresql/data
+
+  proxy:
+    image: haproxy:alpine3.20
+    ports:
+      - "80:80"
+      - "1936:1936" # For stats page
+    volumes:
+      - ./proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - backend
 
   migrate: &basemigrate
     profiles: ["tools"]
