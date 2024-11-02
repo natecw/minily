@@ -1,0 +1,1 @@
+create index long_url_idx on urls (long_url);

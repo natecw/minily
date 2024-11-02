@@ -10,9 +10,9 @@ Current tech stack is Postgres, Redis, Golang and nginx proxy.
 
 ## Run the app
 
-    `docker compose up --build -d`
+    docker compose up --build -d
 
-    `docker compose --profile tools run migrate`
+    docker compose --profile tools run migrate
 
 ## Run the tests
 
