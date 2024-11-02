@@ -4,10 +4,22 @@ services:
     environment:
       DATABASE_URL: postgres://local-dev:local@db/api?sslmode=disable
       API_SERVER_ADD: ":8000"
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
     depends_on:
       - db
+      - cache
     ports:
-      - 8080:8000
+      - 8000:8000
+
+  cache:
+    image: redis:7.4.1-alpine
+    restart: always
+    volumes:
+      - cache:/data
+    ports:
+      - 6379:6379
+    command: redis-server --save 20 1 --loglevel warning
 
   db:
     image: postgres:17.0-alpine
@@ -22,8 +34,7 @@ services:
   migrate: &basemigrate
     profiles: ["tools"]
     image: migrate/migrate
-    entrypoint: "migrate -database postgresql://local-dev:local@db/api?sslmode=disable -path /tmp/migrations"
-    command: up
+    command: ["-path", "/tmp/migrations", "-database", "postgresql://local-dev:local@db/api?sslmode=disable", "up"]
     depends_on:
       - db
     volumes:
@@ -36,3 +47,4 @@ services:
 
 volumes:
   db-data:
+  cache:

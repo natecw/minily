@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/natecw/minily/api"
+	"github.com/natecw/minily/cache"
 	"github.com/natecw/minily/storage"
 	"github.com/urfave/cli"
 )
@@ -52,8 +54,15 @@ func serverCmd() cli.Command {
 				close(stopper)
 			}()
 
+			port, err := strconv.ParseInt(os.Getenv("REDIS_PORT"), 10, 64)
+			if err != nil {
+				return err
+			}
+
+			cache := cache.NewCache(os.Getenv("REDIS_HOST"), port)
+
 			databaseUrl := c.String(apiStorageDatabaseUrl)
-			s, err := storage.NewStorage(databaseUrl)
+			s, err := storage.NewStorage(databaseUrl, cache)
 			if err != nil {
 				return fmt.Errorf("could not initialize storage: %w", err)
 			}

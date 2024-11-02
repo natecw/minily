@@ -9,7 +9,7 @@ const radix = 62
 
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-func Encode(num int) string {
+func Encode(num int64) string {
 	res := ""
 	for num > 0 {
 		rem := num % radix

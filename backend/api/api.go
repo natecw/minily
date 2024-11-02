@@ -2,16 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
-	"mime"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"time"
 
-	"github.com/natecw/minily/models"
 	"github.com/natecw/minily/storage"
 )
 
@@ -59,81 +55,7 @@ func (s *Server) Start(stop <-chan struct{}) error {
 
 func (s *Server) router() http.Handler {
 	router := http.NewServeMux()
-	router.HandleFunc("POST /{$}", s.create)
-	router.HandleFunc("GET /{short_code}", s.redirect)
+	router.HandleFunc("POST /{$}", s.Create)
+	router.HandleFunc("GET /{short_code}", s.Redirect)
 	return router
-}
-
-func (s *Server) create(w http.ResponseWriter, r *http.Request) {
-	s.log.Info("request received to create short_code")
-	ct := r.Header.Get("Content-Type")
-	mediaType, _, err := mime.ParseMediaType(ct)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if mediaType != "application/json" {
-		http.Error(w, "expected json content-type", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	var request models.CreateRequest
-	parser := json.NewDecoder(r.Body)
-	parser.DisallowUnknownFields()
-	if err := parser.Decode(&request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		s.dumpRequest(r)
-		return
-	}
-
-	if request.URL == "" {
-		http.Error(w, "url is missing", http.StatusBadRequest)
-		return
-	}
-
-	mini, err := s.storage.CreateMinily(r.Context(), request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		s.dumpRequest(r)
-		return
-	}
-	s.renderJson(w, mini)
-}
-
-func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
-	s.log.Info("redirect request received", "path", r.URL.Path)
-	short_code := r.PathValue("short_code")
-	if short_code == "" {
-		http.Error(w, "missing path", http.StatusBadRequest)
-		return
-	}
-
-	long_url, err := s.storage.GetUrl(r.Context(), short_code)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		s.log.Error("error retrieving", "short_code", short_code)
-		return
-	}
-	s.log.Info("redirecting", "short_code", short_code, "location", long_url)
-	http.Redirect(w, r, long_url, http.StatusTemporaryRedirect)
-}
-
-func (s *Server) dumpRequest(r *http.Request) {
-	dump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		return
-	}
-	s.log.Error("error parsing json", "body", string(dump))
-}
-
-func (s *Server) renderJson(w http.ResponseWriter, v interface{}) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		s.log.Error("rendering json", "error", err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
 }
