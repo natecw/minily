@@ -1,0 +1,38 @@
+services:
+  backend:
+    build: backend
+    environment:
+      DATABASE_URL: postgres://local-dev:local@db/api?sslmode=disable
+      API_SERVER_ADD: ":8000"
+    depends_on:
+      - db
+    ports:
+      - 8080:8000
+
+  db:
+    image: postgres:17.0-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: api
+      POSTGRES_USER: local-dev
+      POSTGRES_PASSWORD: local
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  migrate: &basemigrate
+    profiles: ["tools"]
+    image: migrate/migrate
+    entrypoint: "migrate -database postgresql://local-dev:local@db/api?sslmode=disable -path /tmp/migrations"
+    command: up
+    depends_on:
+      - db
+    volumes:
+      - ./migrations:/tmp/migrations
+
+  create-migration:
+    <<: *basemigrate
+    entrypoint: migrate create -dir /tmp/migrations -ext sql
+    command: ""
+
+volumes:
+  db-data:
