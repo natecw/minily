@@ -19,6 +19,7 @@ services:
     restart: always
     volumes:
       - cache:/data
+      #- ./configs/redis.cfg:/usr/local/etc/redis/redis.cfg
     ports:
       - 6379:6379
     command: redis-server --save 20 1 --loglevel warning
@@ -39,7 +40,7 @@ services:
       - "80:80"
       - "1936:1936" # For stats page
     volumes:
-      - ./proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./configs/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
       - backend
 

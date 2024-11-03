@@ -12,10 +12,7 @@ import (
 	"github.com/natecw/minily/models"
 )
 
-const (
-	shortCodeIdKey           = "short-code-id"
-	minimumShortCodeId int64 = 1000
-)
+const ()
 
 type Storage struct {
 	pool  *pgxpool.Pool
@@ -45,7 +42,7 @@ func (s *Storage) CreateMinily(ctx context.Context, m models.CreateRequest) (*mo
 	}
 
 	// todo: handle alias
-	nextId, err := s.cache.GetNextId(ctx, shortCodeIdKey, minimumShortCodeId)
+	nextId, err := s.cache.GetNextId(ctx)
 	fmt.Fprintf(os.Stdout, "nextId: %v\n", nextId)
 	if err != nil {
 		return nil, err
@@ -61,12 +58,26 @@ func (s *Storage) CreateMinily(ctx context.Context, m models.CreateRequest) (*mo
 }
 
 func (s *Storage) GetOriginalUrl(ctx context.Context, short_code string) (string, error) {
-	// todo: not deleting expirations so cleanup required at some point
+	url, err := s.cache.GetByShortCode(ctx, short_code)
+	fmt.Printf("short_code(%s)->url(%s) or error(%v)\n", short_code, url, err)
+	if err != nil {
+		return "", err
+	}
+	if url != "" {
+		return url, nil
+	}
 	var long_url string
+	// todo: not deleting expirations so cleanup required at some point
 	s.pool.QueryRow(ctx, "select long_url from urls where short_code=$1 and coalesce(expiration, now() + '1 years'::interval) > $2", short_code, time.Now()).
 		Scan(&long_url)
 	if long_url == "" {
 		return "", fmt.Errorf("unknown url %v", short_code)
 	}
+
+	fmt.Println("after query", long_url)
+	go func() {
+		s.cache.PutShortCode(ctx, short_code, long_url)
+		fmt.Println("stored", short_code, "->", long_url, " in cache")
+	}()
 	return long_url, nil
 }
